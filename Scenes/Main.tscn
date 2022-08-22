@@ -11,7 +11,7 @@ script/source = "extends Spatial
 var grid_array = []
 var create_pos = Vector3(1, 0, 1)
 var create_dir = 1
-var path_memory
+var path_memory = []
 
 onready var gridmap = $GridMap
 
@@ -30,6 +30,7 @@ func _ready():
 #func _process(delta):
 #	pass
 
+
 func create_2d_array():
 	for z in range(SIZE_Z):
 		grid_array.append([])
@@ -45,41 +46,58 @@ func generate_random_map_in_array():
 	
 	#while ! create_pos == START_POS:
 	for _x in range(10):
+		choose_randon_drawing_direction()
+		try_draw_path()
+
+
+func choose_randon_drawing_direction():
+	randomize()
+	var rand = randi() % 6
+		
+	if rand == 0:
 		randomize()
-		var rand = randi() % 6
-		
+		rand = randi() % 2
+			
 		if rand == 0:
-			randomize()
-			rand = randi() % 2
+			create_dir -= 1
 			
-			if rand == 0:
-				create_dir -= 1
-				
-				if create_dir < 0:
-					create_dir = 3
-			
-			if rand == 1:
-				create_dir += 1
-				
-				if create_dir > 3:
-					create_dir = 0
-	
-	for _i in range(4):
-		var test_pos = create_pos + DIRS[create_dir] * 2
+			if create_dir < 0:
+				create_dir = 3
 		
+		if rand == 1:
+			create_dir += 1
+			
+			if create_dir > 3:
+				create_dir = 0
+
+
+func try_draw_path():
+	for i in range(4):
+		print(i)
+		var test_pos = create_pos + DIRS[create_dir] * 2
+		#print(test_pos)
 		if grid_array[test_pos.z][test_pos.x] == 1:
+			path_memory.append(create_pos)
 			for _j in range(2):
 				create_pos = create_pos + DIRS[create_dir]
 				grid_array[create_pos.z][create_pos.x] = 0
-			#break
+			break
 		else:
 			create_dir += 1
 			
 			if create_dir > 3:
 				create_dir = 0
-			
-	
-	
+		if i == 3:
+			if create_pos == Vector3(1, 0, 1):
+				create_pos = START_POS
+			else:
+				backtrack_path()
+
+
+func backtrack_path():
+	create_pos = path_memory[path_memory.size()]
+	path_memory.remove(path_memory.size())
+	try_draw_path()
 
 
 func draw_map_in_gridmap():
