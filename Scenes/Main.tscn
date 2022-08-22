@@ -1,0 +1,121 @@
+[gd_scene load_steps=6 format=2]
+
+[ext_resource path="res://Assets/GroundBricks.png" type="Texture" id=1]
+[ext_resource path="res://Assets/WallMeahLib.tres" type="MeshLibrary" id=2]
+
+[sub_resource type="GDScript" id=3]
+script/source = "extends Spatial
+
+
+# Declare member variables here:
+var grid_array = []
+var create_pos = Vector3(1, 0, 1)
+var create_dir = 1
+var path_memory
+
+onready var gridmap = $GridMap
+
+const SIZE_X = 31
+const SIZE_Z = 31
+const START_POS = Vector3(1, 0, -1)
+const DIRS = [Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]
+
+# Called when the node enters the scene tree for the first time.
+func _ready():
+	create_2d_array()
+	generate_random_map_in_array()
+	draw_map_in_gridmap()
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+#func _process(delta):
+#	pass
+
+func create_2d_array():
+	for z in range(SIZE_Z):
+		grid_array.append([])
+		for x in range(SIZE_X):
+			if (x == 1 && z == 0) || (x == SIZE_X - 2 && z == SIZE_Z - 1):
+				grid_array[z].append(0)
+			else:
+				grid_array[z].append(1)
+
+
+func generate_random_map_in_array():
+	grid_array[create_pos.z][create_pos.x] = 0
+	
+	#while ! create_pos == START_POS:
+	for _x in range(10):
+		randomize()
+		var rand = randi() % 6
+		
+		if rand == 0:
+			randomize()
+			rand = randi() % 2
+			
+			if rand == 0:
+				create_dir -= 1
+				
+				if create_dir < 0:
+					create_dir = 3
+			
+			if rand == 1:
+				create_dir += 1
+				
+				if create_dir > 3:
+					create_dir = 0
+	
+	for _i in range(4):
+		var test_pos = create_pos + DIRS[create_dir] * 2
+		
+		if grid_array[test_pos.z][test_pos.x] == 1:
+			for _j in range(2):
+				create_pos = create_pos + DIRS[create_dir]
+				grid_array[create_pos.z][create_pos.x] = 0
+			#break
+		else:
+			create_dir += 1
+			
+			if create_dir > 3:
+				create_dir = 0
+			
+	
+	
+
+
+func draw_map_in_gridmap():
+	for z in grid_array.size():
+		for x in grid_array[z].size():
+			if grid_array[z][x] == 1:
+				gridmap.set_cell_item(x, 0, z, 0, 0)
+"
+
+[sub_resource type="SpatialMaterial" id=2]
+flags_unshaded = true
+albedo_texture = ExtResource( 1 )
+uv1_scale = Vector3( 31, 31, 31 )
+
+[sub_resource type="PlaneMesh" id=1]
+material = SubResource( 2 )
+size = Vector2( 31, 31 )
+
+[node name="Main" type="Spatial"]
+script = SubResource( 3 )
+
+[node name="Camera" type="Camera" parent="."]
+transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 15.5, 32, 15.5 )
+
+[node name="MeshInstance" type="MeshInstance" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 0, 15.5 )
+mesh = SubResource( 1 )
+skeleton = NodePath("../Camera")
+material/0 = null
+
+[node name="GridMap" type="GridMap" parent="."]
+mesh_library = ExtResource( 2 )
+cell_size = Vector3( 1, 1, 1 )
+data = {
+"cells": PoolIntArray(  )
+}
+__meta__ = {
+"_editor_clip_": 0
+}
