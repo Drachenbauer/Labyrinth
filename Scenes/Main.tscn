@@ -9,15 +9,15 @@ script/source = "extends Spatial
 
 # Declare member variables here:
 var grid_array = []
-var create_pos = Vector3(1, 0, 1)
+var create_pos = Vector3(2, 1, 2)
 var create_dir = 1
 var path_memory = []
 
 onready var gridmap = $GridMap
 
-const SIZE_X = 31
-const SIZE_Z = 31
-const START_POS = Vector3(1, 0, -1)
+const SIZE_X = 33
+const SIZE_Z = 33
+const START_POS = Vector3(2, 1, 0)
 const DIRS = [Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]
 
 # Called when the node enters the scene tree for the first time.
@@ -35,7 +35,9 @@ func create_2d_array():
 	for z in range(SIZE_Z):
 		grid_array.append([])
 		for x in range(SIZE_X):
-			if (x == 1 && z == 0) || (x == SIZE_X - 2 && z == SIZE_Z - 1):
+			if x == 0 || z == 0 || x == SIZE_X - 1 || z == SIZE_Z - 1:
+				grid_array[z].append(0)
+			elif (x == 2 && z == 1) || (x == SIZE_X - 3 && z == SIZE_Z - 2):
 				grid_array[z].append(0)
 			else:
 				grid_array[z].append(1)
@@ -44,15 +46,14 @@ func create_2d_array():
 func generate_random_map_in_array():
 	grid_array[create_pos.z][create_pos.x] = 0
 	
-	#while ! create_pos == START_POS:
-	for _x in range(10):
+	while ! create_pos == START_POS:
 		choose_randon_drawing_direction()
 		try_draw_path()
 
 
 func choose_randon_drawing_direction():
 	randomize()
-	var rand = randi() % 6
+	var rand = randi() % 3
 		
 	if rand == 0:
 		randomize()
@@ -73,9 +74,8 @@ func choose_randon_drawing_direction():
 
 func try_draw_path():
 	for i in range(4):
-		print(i)
 		var test_pos = create_pos + DIRS[create_dir] * 2
-		#print(test_pos)
+		
 		if grid_array[test_pos.z][test_pos.x] == 1:
 			path_memory.append(create_pos)
 			for _j in range(2):
@@ -88,15 +88,15 @@ func try_draw_path():
 			if create_dir > 3:
 				create_dir = 0
 		if i == 3:
-			if create_pos == Vector3(1, 0, 1):
+			if create_pos == Vector3(2, 1, 2):
 				create_pos = START_POS
 			else:
 				backtrack_path()
 
 
 func backtrack_path():
-	create_pos = path_memory[path_memory.size()]
-	path_memory.remove(path_memory.size())
+	create_pos = path_memory[path_memory.size() - 1]
+	path_memory.remove(path_memory.size() - 1)
 	try_draw_path()
 
 
@@ -120,10 +120,10 @@ size = Vector2( 31, 31 )
 script = SubResource( 3 )
 
 [node name="Camera" type="Camera" parent="."]
-transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 15.5, 32, 15.5 )
+transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 16.5, 32, 16.5 )
 
 [node name="MeshInstance" type="MeshInstance" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 0, 15.5 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 16.5 )
 mesh = SubResource( 1 )
 skeleton = NodePath("../Camera")
 material/0 = null
