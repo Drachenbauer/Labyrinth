@@ -1,50 +1,72 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=13 format=2]
 
-[ext_resource path="res://Assets/GroundBricks.png" type="Texture" id=1]
-[ext_resource path="res://Assets/WallMeahLib.tres" type="MeshLibrary" id=2]
+[ext_resource path="res://assets/style/Style.tres" type="Theme" id=1]
+[ext_resource path="res://assets/GroundBricks.png" type="Texture" id=2]
+[ext_resource path="res://assets/WallMeahLib.tres" type="MeshLibrary" id=3]
+[ext_resource path="res://Scenes/Player.tscn" type="PackedScene" id=4]
+[ext_resource path="res://assets/treasure chest/Chest.tres" type="ArrayMesh" id=5]
 
 [sub_resource type="GDScript" id=3]
-script/source = "extends Spatial
+script/source = "extends Node
 
 
 # Declare member variables here:
-var grid_array = []
-var create_pos = Vector3(2, 1, 2)
+var create_pos = Vector3(2, 0, 2)
 var create_dir = 1
 var path_memory = []
 
-onready var gridmap = $GridMap
+onready var top_down_camera = $Spatial/Viewport/Camera
+onready var chest = $Spatial/Chest
+onready var gridmap = $Spatial/GridMap
+onready var ground = $Spatial/Ground
+onready var ground_3 = $Spatial/Ground3
+onready var player = $Spatial/Player
+onready var button = $CanvasLayer/Button
+onready var label = $CanvasLayer/Label
 
-const SIZE_X = 33
-const SIZE_Z = 33
-const START_POS = Vector3(2, 1, 0)
+
+const SIZE_X = 32
+const SIZE_Z = 32
+const START_POS = Vector3(2, 0, 0)
 const DIRS = [Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	create_2d_array()
-	generate_random_map_in_array()
-	draw_map_in_gridmap()
+	top_down_camera.translation = Vector3(SIZE_X / 2.0 + 0.5, 2, SIZE_Z / 2.0 + 0.5)
+	ground.mesh.size = Vector2(SIZE_X - 1, SIZE_Z - 1)
+	ground.mesh.surface_get_material(0).uv1_scale = Vector3(SIZE_X - 1, SIZE_Z - 1, 0)
+	ground.translation = Vector3(SIZE_X / 2.0 + 0.5, 0, SIZE_Z / 2.0 + 0.5)
+	ground_3.translation = Vector3(SIZE_X - 1.5, 0, SIZE_Z + 1)
+	button.visible = false
+	label.visible = false
+	player.translation = Vector3(SIZE_X - 1.5, 0, SIZE_Z + 0.5)
+	
+	create_map_area()
+	generate_random_map()
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-#func _process(delta):
-#	pass
 
-
-func create_2d_array():
+func create_map_area():
 	for z in range(SIZE_Z):
-		grid_array.append([])
 		for x in range(SIZE_X):
-			if x == 0 || z == 0 || x == SIZE_X - 1 || z == SIZE_Z - 1:
-				grid_array[z].append(0)
-			elif (x == 2 && z == 1) || (x == SIZE_X - 3 && z == SIZE_Z - 2):
-				grid_array[z].append(0)
-			else:
-				grid_array[z].append(1)
+			if x > 0 && z > 0 && x < SIZE_X && z < SIZE_Z:
+				gridmap.set_cell_item(x, 0, z, 0, 0)
+			if (x == 2 && z == 1) || (x == SIZE_X - 2 && z == SIZE_Z - 1):
+				gridmap.set_cell_item(x, 0, z, -1, 0)
+	
+	gridmap.set_cell_item(1, 0, -1, 0, 0)
+	gridmap.set_cell_item(2, 0, -1, 0, 0)
+	gridmap.set_cell_item(3, 0, -1, 0, 0)
+	gridmap.set_cell_item(1, 0, 0, 0, 0)
+	gridmap.set_cell_item(3, 0, 0, 0, 0)
+	gridmap.set_cell_item(SIZE_X - 1, 0, SIZE_Z, 0, 0)
+	gridmap.set_cell_item(SIZE_X - 3, 0, SIZE_Z, 0, 0)
+	gridmap.set_cell_item(SIZE_X - 1, 0, SIZE_Z + 1, 0, 0)
+	gridmap.set_cell_item(SIZE_X - 2, 0, SIZE_Z + 1, 0, 0)
+	gridmap.set_cell_item(SIZE_X - 3, 0, SIZE_Z + 1, 0, 0)
 
 
-func generate_random_map_in_array():
-	grid_array[create_pos.z][create_pos.x] = 0
+func generate_random_map():
+	gridmap.set_cell_item(create_pos.x, create_pos.y, create_pos.z, -1, 0)
 	
 	while ! create_pos == START_POS:
 		choose_randon_drawing_direction()
@@ -75,12 +97,11 @@ func choose_randon_drawing_direction():
 func try_draw_path():
 	for i in range(4):
 		var test_pos = create_pos + DIRS[create_dir] * 2
-		
-		if grid_array[test_pos.z][test_pos.x] == 1:
+		if gridmap.get_cell_item(test_pos.x, test_pos.y, test_pos.z) == 0:
 			path_memory.append(create_pos)
 			for _j in range(2):
 				create_pos = create_pos + DIRS[create_dir]
-				grid_array[create_pos.z][create_pos.x] = 0
+				gridmap.set_cell_item(create_pos.x, create_pos.y, create_pos.z, -1, 0)
 			break
 		else:
 			create_dir += 1
@@ -88,7 +109,7 @@ func try_draw_path():
 			if create_dir > 3:
 				create_dir = 0
 		if i == 3:
-			if create_pos == Vector3(2, 1, 2):
+			if create_pos == Vector3(2, 0, 2):
 				create_pos = START_POS
 			else:
 				backtrack_path()
@@ -100,36 +121,64 @@ func backtrack_path():
 	try_draw_path()
 
 
-func draw_map_in_gridmap():
-	for z in grid_array.size():
-		for x in grid_array[z].size():
-			if grid_array[z][x] == 1:
-				gridmap.set_cell_item(x, 0, z, 0, 0)
+func _on_Button_pressed():
+	var error = get_tree().reload_current_scene()
+	
+	if error:
+		print(\"Error:\", error)
 "
+
+[sub_resource type="BoxShape" id=7]
+extents = Vector3( 0.5, 0.5, 0.5 )
 
 [sub_resource type="SpatialMaterial" id=2]
 flags_unshaded = true
-albedo_texture = ExtResource( 1 )
+albedo_texture = ExtResource( 2 )
 uv1_scale = Vector3( 31, 31, 31 )
 
 [sub_resource type="PlaneMesh" id=1]
 material = SubResource( 2 )
 size = Vector2( 31, 31 )
 
-[node name="Main" type="Spatial"]
+[sub_resource type="SpatialMaterial" id=4]
+flags_unshaded = true
+albedo_texture = ExtResource( 2 )
+uv1_scale = Vector3( 3, 2, 1 )
+
+[sub_resource type="PlaneMesh" id=5]
+material = SubResource( 4 )
+size = Vector2( 3, 2 )
+
+[sub_resource type="ViewportTexture" id=6]
+viewport_path = NodePath("Spatial/Viewport")
+
+[node name="Main" type="Node"]
 script = SubResource( 3 )
 
-[node name="Camera" type="Camera" parent="."]
-transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 16.5, 32, 16.5 )
+[node name="Spatial" type="Spatial" parent="."]
 
-[node name="MeshInstance" type="MeshInstance" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 16.5 )
-mesh = SubResource( 1 )
-skeleton = NodePath("../Camera")
+[node name="Viewport" type="Viewport" parent="Spatial"]
+size = Vector2( 144, 144 )
+render_target_v_flip = true
+
+[node name="Camera" type="Camera" parent="Spatial/Viewport"]
+transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 16.5, 4, 16.5 )
+projection = 1
+size = 36.0
+
+[node name="Chest" type="StaticBody" parent="Spatial"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0.5 )
+
+[node name="CollisionShape" type="CollisionShape" parent="Spatial/Chest"]
+shape = SubResource( 7 )
+
+[node name="Chest" type="MeshInstance" parent="Spatial/Chest"]
+mesh = ExtResource( 5 )
+skeleton = NodePath("../../..")
 material/0 = null
 
-[node name="GridMap" type="GridMap" parent="."]
-mesh_library = ExtResource( 2 )
+[node name="GridMap" type="GridMap" parent="Spatial"]
+mesh_library = ExtResource( 3 )
 cell_size = Vector3( 1, 1, 1 )
 data = {
 "cells": PoolIntArray(  )
@@ -137,3 +186,55 @@ data = {
 __meta__ = {
 "_editor_clip_": 0
 }
+
+[node name="Ground" type="MeshInstance" parent="Spatial"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 16.5 )
+mesh = SubResource( 1 )
+skeleton = NodePath("../Viewport/Camera")
+material/0 = null
+
+[node name="Ground2" type="MeshInstance" parent="Spatial"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0 )
+mesh = SubResource( 5 )
+skeleton = NodePath("../Viewport/Camera")
+material/0 = null
+
+[node name="Ground3" type="MeshInstance" parent="Spatial"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 30.5, 0, 33 )
+mesh = SubResource( 5 )
+skeleton = NodePath("../Viewport/Camera")
+material/0 = null
+
+[node name="Player" parent="Spatial" instance=ExtResource( 4 )]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 30.5, 0, 32.5 )
+
+[node name="Camera" type="Camera" parent="Spatial/Player"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0 )
+current = true
+fov = 90.0
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Sprite" type="Sprite" parent="CanvasLayer"]
+position = Vector2( 504, 72 )
+texture = SubResource( 6 )
+
+[node name="Label" type="Label" parent="CanvasLayer"]
+margin_left = 192.0
+margin_top = 64.0
+margin_right = 240.0
+margin_bottom = 96.0
+rect_scale = Vector2( 4, 4 )
+theme = ExtResource( 1 )
+text = "Win"
+align = 1
+
+[node name="Button" type="Button" parent="CanvasLayer"]
+margin_top = 456.0
+margin_right = 288.0
+margin_bottom = 516.0
+rect_scale = Vector2( 2, 2 )
+theme = ExtResource( 1 )
+text = "Generate new"
+
+[connection signal="pressed" from="CanvasLayer/Button" to="." method="_on_Button_pressed"]

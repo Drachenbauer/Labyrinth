@@ -1,0 +1,147 @@
+[gd_scene load_steps=5 format=2]
+
+[ext_resource path="res://assets/PlayerMarker.png" type="Texture" id=1]
+
+[sub_resource type="GDScript" id=14]
+script/source = "extends Spatial
+
+# Declare member variables here:
+
+var move = false
+var won = false
+var step = 0
+var pos = Vector3(0, 0, 0)
+var direction = Vector3(0, 0, 0)
+var orientation = [\"N\", \"W\", \"S\", \"E\"]
+var rot = 0
+var rot_dir = 0
+
+onready var raycast = $MeshInstance/RayCast
+
+const DIR = {
+\"N\" : {\"left\" : Vector3(-1, 0, 0), \"right\" : Vector3(1, 0, 0), \"up\" : Vector3(0, 0, -1), \"down\" : Vector3(0, 0, 1)},
+\"W\" : {\"left\" : Vector3(0, 0, 1), \"right\" : Vector3(0, 0, -1), \"up\" : Vector3(-1, 0, 0), \"down\" : Vector3(1, 0, 0)},
+\"S\" : {\"left\" : Vector3(1, 0, 0), \"right\" : Vector3(-1, 0, 0), \"up\" : Vector3(0, 0, 1), \"down\" : Vector3(0, 0, -1)},
+\"E\" : {\"left\" : Vector3(0, 0, -1), \"right\" : Vector3(0, 0, 1), \"up\" : Vector3(1, 0, 0), \"down\" : Vector3(-1, 0, 0)}}
+const STEP_COUNT = 60
+const POS_STEP = 1.0 / STEP_COUNT
+const ROT_STEP = 90.0 / STEP_COUNT
+
+# Called when the node enters the scene tree for the first time.
+func _ready():
+	pos = translation
+	rot = rotation_degrees.y
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(_delta):
+	check_controls()
+	step_mov()
+	step_rot()
+	check_finish()
+
+func check_controls():
+	if !move && !won:
+		if Input.is_action_pressed(\"left\") && !Input.is_action_pressed(\"right\"):
+			start_mov(\"left\")
+		elif Input.is_action_pressed(\"right\")&& !Input.is_action_pressed(\"left\"):
+			start_mov(\"right\")
+		elif Input.is_action_pressed(\"up\")&& !Input.is_action_pressed(\"down\"):
+			start_mov(\"up\")
+		elif Input.is_action_pressed(\"down\")&& !Input.is_action_pressed(\"up\"):
+			start_mov(\"down\")
+		
+		if Input.is_action_pressed(\"rot_left\")&& !Input.is_action_pressed(\"rot_right\"):
+			start_rot(1)
+		elif Input.is_action_pressed(\"rot_right\")&& !Input.is_action_pressed(\"rot_left\"):
+			start_rot(-1)
+
+
+func start_mov(key):
+		direction = DIR[orientation[0]][key]
+		if key == \"left\":
+			raycast.rotation_degrees.y = 90
+		elif key == \"right\":
+			raycast.rotation_degrees.y = -90
+		elif key == \"up\":
+			raycast.rotation_degrees.y = 0
+		elif key == \"down\":
+			raycast.rotation_degrees.y = 180
+		
+		raycast.force_update_transform()
+		raycast.force_raycast_update()
+		
+		if raycast.get_collider() == null:
+			move = true
+
+
+func step_mov():
+	if move and rot_dir == 0:
+		
+		step += 1
+		pos += POS_STEP * direction
+		
+		if step == STEP_COUNT:
+			move = false
+			step = 0
+			pos = Vector3(stepify(pos.x, 0.5), pos.y, stepify(pos.z, 0.5))
+		
+		translation = pos
+
+
+func start_rot(key):
+	move = true
+	rot_dir = key 
+	if rot_dir < 0:
+		orientation.push_front(orientation[3])
+		orientation.pop_back()
+	elif rot_dir > 0:
+		orientation.push_back(orientation[0])
+		orientation.pop_front()
+
+	
+func step_rot():
+	if move and !rot_dir == 0:
+		step += 1
+		rot += ROT_STEP * rot_dir
+		
+		if rot < -180:
+			rot += 360
+		elif rot > 180:
+			rot -= 360
+		
+		if step == STEP_COUNT:
+			move = false
+			step = 0
+			rot = round(rot)
+			rot_dir = 0
+		
+		rotation_degrees.y = rot
+
+
+func check_finish():
+	if raycast.get_collider() == get_parent().get_parent().chest:
+		won = true
+		get_parent().get_parent().button.visible = true
+		get_parent().get_parent().label.visible = true
+"
+
+[sub_resource type="SpatialMaterial" id=12]
+flags_unshaded = true
+albedo_texture = ExtResource( 1 )
+
+[sub_resource type="SphereMesh" id=13]
+material = SubResource( 12 )
+radius = 0.5
+height = 1.0
+
+[node name="Player" type="Spatial"]
+script = SubResource( 14 )
+
+[node name="MeshInstance" type="MeshInstance" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0 )
+mesh = SubResource( 13 )
+material/0 = null
+
+[node name="RayCast" type="RayCast" parent="MeshInstance"]
+enabled = true
+cast_to = Vector3( 0, 0, -1 )
